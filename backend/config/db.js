@@ -16,7 +16,7 @@ const connectDB = async () => {
     return cachedPromise;
   }
 
-  const mongoUri = process.env.MONGO_URI;
+  const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
 
   if (process.env.USE_MEMORY === 'true' || (!mongoUri && process.env.STRICT_DB !== 'true')) {
     console.log(process.env.USE_MEMORY === 'true' 
