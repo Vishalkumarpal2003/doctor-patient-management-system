@@ -80,13 +80,15 @@ const runTests = async () => {
   console.log('5. Available Slots for 2026-11-20:', slotsRes.body.slots?.length, 'slots returned');
 
   // 6. Book an Appointment
+  const testDate = '2026-12-15';
+  const testSlot = '10:00 AM';
   const bookRes = await request(
     'POST',
     '/api/appointments',
     {
       doctorId,
-      appointmentDate: '2026-11-20',
-      timeSlot: '09:00 AM',
+      appointmentDate: testDate,
+      timeSlot: testSlot,
       symptoms: 'Routine cardiovascular wellness checkup',
     },
     patientToken
@@ -100,8 +102,8 @@ const runTests = async () => {
     '/api/appointments',
     {
       doctorId,
-      appointmentDate: '2026-11-20',
-      timeSlot: '09:00 AM',
+      appointmentDate: testDate,
+      timeSlot: testSlot,
       symptoms: 'Trying to double book same slot',
     },
     patientToken

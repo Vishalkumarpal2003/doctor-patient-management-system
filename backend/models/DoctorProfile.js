@@ -76,5 +76,8 @@ const doctorProfileSchema = new mongoose.Schema(
   }
 );
 
+doctorProfileSchema.index({ specialization: 1, isApproved: 1, fees: 1 });
+doctorProfileSchema.index({ isApproved: 1 });
+
 const MongooseDoctorProfile = mongoose.model('DoctorProfile', doctorProfileSchema);
 module.exports = createModelProxy('DoctorProfile', MongooseDoctorProfile);

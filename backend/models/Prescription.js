@@ -71,5 +71,8 @@ const prescriptionSchema = new mongoose.Schema(
   }
 );
 
+prescriptionSchema.index({ patient: 1, createdAt: -1 });
+prescriptionSchema.index({ doctor: 1, createdAt: -1 });
+
 const MongoosePrescription = mongoose.model('Prescription', prescriptionSchema);
 module.exports = createModelProxy('Prescription', MongoosePrescription);

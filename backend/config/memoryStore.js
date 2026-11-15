@@ -233,6 +233,17 @@ class MemoryQuery {
     return this;
   }
 
+  skip(num) {
+    if (Array.isArray(this._result) && typeof num === 'number') {
+      this._result = this._result.slice(num);
+    }
+    return this;
+  }
+
+  lean() {
+    return this;
+  }
+
   populate(field, selectFields) {
     const memoryStore = getMemoryStore();
 

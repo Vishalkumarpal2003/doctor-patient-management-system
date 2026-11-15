@@ -118,6 +118,20 @@ const getMyPrescriptions = async (req, res, next) => {
 // @access  Private (Doctor / Admin)
 const getPatientPrescriptions = async (req, res, next) => {
   try {
+    // If doctor, verify this doctor has an appointment relationship with this patient
+    if (req.user.role === 'doctor') {
+      const hasRelationship = await Appointment.findOne({
+        doctor: req.user._id,
+        patient: req.params.patientId,
+      });
+      if (!hasRelationship) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You can only view clinical records of patients who have consulted with you.',
+        });
+      }
+    }
+
     const prescriptions = await Prescription.find({ patient: req.params.patientId })
       .populate('doctor', 'name email phone')
       .populate('appointment', 'appointmentDate timeSlot status fee')
@@ -149,6 +163,22 @@ const getPrescriptionByAppointment = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'No prescription found for this appointment',
+      });
+    }
+
+    // Strict record ownership check (Patient, Prescribing Doctor, or Admin)
+    const patientId = prescription.patient?._id?.toString() || prescription.patient?.toString();
+    const doctorId = prescription.doctor?._id?.toString() || prescription.doctor?.toString();
+    const currentUserId = req.user._id.toString();
+
+    if (
+      req.user.role !== 'admin' &&
+      currentUserId !== patientId &&
+      currentUserId !== doctorId
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You are not authorized to view this prescription.',
       });
     }
 

@@ -9,37 +9,46 @@ const Prescription = require('../models/Prescription');
 // @access  Private (Admin)
 const getAdminStats = async (req, res, next) => {
   try {
-    const totalPatients = await User.countDocuments({ role: 'patient' });
-    const totalDoctors = await User.countDocuments({ role: 'doctor' });
-    const pendingDoctorApprovals = await DoctorProfile.countDocuments({ isApproved: false });
-    const approvedDoctors = await DoctorProfile.countDocuments({ isApproved: true });
+    // Parallelized query execution for high throughput & low latency
+    const [
+      totalPatients,
+      totalDoctors,
+      pendingDoctorApprovals,
+      approvedDoctors,
+      totalAppointments,
+      pendingAppointments,
+      confirmedAppointments,
+      completedAppointments,
+      cancelledAppointments,
+      paidAppointments,
+      refundedAppointments,
+      recentAppointments,
+      pendingDoctors,
+    ] = await Promise.all([
+      User.countDocuments({ role: 'patient' }),
+      User.countDocuments({ role: 'doctor' }),
+      DoctorProfile.countDocuments({ isApproved: false }),
+      DoctorProfile.countDocuments({ isApproved: true }),
+      Appointment.countDocuments(),
+      Appointment.countDocuments({ status: 'Pending' }),
+      Appointment.countDocuments({ status: 'Confirmed' }),
+      Appointment.countDocuments({ status: 'Completed' }),
+      Appointment.countDocuments({ status: { $in: ['Cancelled', 'Rejected'] } }),
+      Appointment.find({ paymentStatus: 'Paid' }).select('fee').lean(),
+      Appointment.find({ paymentStatus: 'Refunded' }).select('fee').lean(),
+      Appointment.find()
+        .populate('doctor', 'name email')
+        .populate('patient', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(5),
+      DoctorProfile.find({ isApproved: false })
+        .populate('user', 'name email phone createdAt')
+        .limit(5),
+    ]);
 
-    const totalAppointments = await Appointment.countDocuments();
-    const pendingAppointments = await Appointment.countDocuments({ status: 'Pending' });
-    const confirmedAppointments = await Appointment.countDocuments({ status: 'Confirmed' });
-    const completedAppointments = await Appointment.countDocuments({ status: 'Completed' });
-    const cancelledAppointments = await Appointment.countDocuments({
-      status: { $in: ['Cancelled', 'Rejected'] },
-    });
-
-    // Calculate revenue
-    const paidAppointments = await Appointment.find({ paymentStatus: 'Paid' }).select('fee');
+    // Calculate revenue metrics
     const totalRevenue = paidAppointments.reduce((sum, item) => sum + (item.fee || 0), 0);
-
-    const refundedAppointments = await Appointment.find({ paymentStatus: 'Refunded' }).select('fee');
     const totalRefunded = refundedAppointments.reduce((sum, item) => sum + (item.fee || 0), 0);
-
-    // Recent 5 appointments
-    const recentAppointments = await Appointment.find()
-      .populate('doctor', 'name email')
-      .populate('patient', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    // Pending doctor verification requests
-    const pendingDoctors = await DoctorProfile.find({ isApproved: false })
-      .populate('user', 'name email phone createdAt')
-      .limit(5);
 
     res.json({
       success: true,

@@ -77,6 +77,9 @@ appointmentSchema.index(
     },
   }
 );
+appointmentSchema.index({ patient: 1, appointmentDate: -1 });
+appointmentSchema.index({ doctor: 1, status: 1, appointmentDate: 1 });
+appointmentSchema.index({ paymentStatus: 1 });
 
 const MongooseAppointment = mongoose.model('Appointment', appointmentSchema);
 module.exports = createModelProxy('Appointment', MongooseAppointment);

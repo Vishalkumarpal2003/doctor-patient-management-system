@@ -8,7 +8,7 @@ const PatientProfile = require('../models/PatientProfile');
 // @access  Public
 const getAllDoctors = async (req, res, next) => {
   try {
-    const { search, specialization, minFee, maxFee } = req.query;
+    const { search, specialization, minFee, maxFee, page, limit, sortBy = 'rating', sortOrder = 'desc' } = req.query;
 
     const profileFilter = { isApproved: true };
 
@@ -36,10 +36,39 @@ const getAllDoctors = async (req, res, next) => {
 
     profileFilter.user = { $in: userIds };
 
-    const doctors = await DoctorProfile.find(profileFilter).populate(
-      'user',
-      'name email phone gender avatar address isActive'
-    );
+    // Sort order definition
+    const sortField = ['fees', 'experience', 'rating'].includes(sortBy) ? sortBy : 'rating';
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const sortConfig = { [sortField]: sortDirection };
+
+    let query = DoctorProfile.find(profileFilter)
+      .populate('user', 'name email phone gender avatar address isActive')
+      .sort(sortConfig);
+
+    const totalCount = await DoctorProfile.countDocuments(profileFilter);
+
+    // Optional pagination
+    if (page && limit) {
+      const pageNum = Math.max(1, parseInt(page, 10));
+      const limitNum = Math.max(1, parseInt(limit, 10));
+      const skip = (pageNum - 1) * limitNum;
+      query = query.skip(skip).limit(limitNum);
+
+      const doctors = await query;
+      return res.json({
+        success: true,
+        count: doctors.length,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(totalCount / limitNum),
+          totalCount,
+        },
+        data: doctors,
+      });
+    }
+
+    const doctors = await query;
 
     // If search term was provided, also check if specialization matched directly
     if (search && doctors.length === 0) {

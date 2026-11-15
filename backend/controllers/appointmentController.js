@@ -24,8 +24,21 @@ const bookAppointment = async (req, res, next) => {
       });
     }
 
-    // Verify doctor exists and is approved
-    const doctorUser = await User.findById(doctorId);
+    // Verify doctor exists and is approved (supports both Doctor user ID and DoctorProfile ID)
+    let resolvedDoctorUserId = doctorId;
+    let doctorUser = await User.findById(doctorId);
+    let doctorProfile = null;
+
+    if (!doctorUser) {
+      doctorProfile = await DoctorProfile.findById(doctorId);
+      if (doctorProfile) {
+        resolvedDoctorUserId = doctorProfile.user;
+        doctorUser = await User.findById(resolvedDoctorUserId);
+      }
+    } else {
+      doctorProfile = await DoctorProfile.findOne({ user: resolvedDoctorUserId });
+    }
+
     if (!doctorUser || doctorUser.role !== 'doctor') {
       return res.status(404).json({
         success: false,
@@ -33,7 +46,6 @@ const bookAppointment = async (req, res, next) => {
       });
     }
 
-    const doctorProfile = await DoctorProfile.findOne({ user: doctorId });
     if (!doctorProfile || !doctorProfile.isApproved) {
       return res.status(400).json({
         success: false,
@@ -87,7 +99,7 @@ const bookAppointment = async (req, res, next) => {
     // Create appointment
     const appointment = await Appointment.create({
       patient: req.user._id,
-      doctor: doctorId,
+      doctor: resolvedDoctorUserId,
       appointmentDate,
       timeSlot,
       symptoms: symptoms || 'General consultation',
@@ -124,7 +136,7 @@ const bookAppointment = async (req, res, next) => {
 // @access  Private (Patient)
 const getPatientAppointments = async (req, res, next) => {
   try {
-    const { status } = req.query;
+    const { status, page, limit } = req.query;
     const filter = { patient: req.user._id };
 
     if (status && status !== 'All') {
@@ -159,6 +171,25 @@ const getPatientAppointments = async (req, res, next) => {
       appObj.prescription = prescriptionMap[appObj._id.toString()] || null;
       return appObj;
     });
+
+    if (page && limit) {
+      const pageNum = Math.max(1, parseInt(page, 10));
+      const limitNum = Math.max(1, parseInt(limit, 10));
+      const skip = (pageNum - 1) * limitNum;
+      const paginated = enrichedAppointments.slice(skip, skip + limitNum);
+
+      return res.json({
+        success: true,
+        count: paginated.length,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(enrichedAppointments.length / limitNum),
+          totalCount: enrichedAppointments.length,
+        },
+        data: paginated,
+      });
+    }
 
     res.json({
       success: true,

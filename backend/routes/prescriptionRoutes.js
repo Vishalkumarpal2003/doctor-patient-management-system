@@ -7,8 +7,9 @@ const {
   getPrescriptionByAppointment,
 } = require('../controllers/prescriptionController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+const { validatePrescription } = require('../middleware/validationMiddleware');
 
-router.post('/', protect, authorize('doctor'), createOrUpdatePrescription);
+router.post('/', protect, authorize('doctor'), validatePrescription, createOrUpdatePrescription);
 router.get('/my', protect, authorize('patient'), getMyPrescriptions);
 router.get('/patient/:patientId', protect, authorize('doctor', 'admin'), getPatientPrescriptions);
 router.get('/appointment/:appointmentId', protect, getPrescriptionByAppointment);
