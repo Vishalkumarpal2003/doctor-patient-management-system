@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Complete MERN Stack Doctor Patient Management System",
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
+    "build": "cd frontend && npm install --include=dev && npm run build",
     "install:backend": "cd backend && npm install",
     "install:frontend": "cd frontend && npm install",
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
