@@ -35,6 +35,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Serverless DB connection & auto-seed middleware
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    await autoSeedIfEmpty();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Mount Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/doctors', require('./routes/doctorRoutes'));
@@ -48,7 +59,7 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-if (!process.env.VERCEL) {
+if (require.main === module && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`CuraHealth Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
   });

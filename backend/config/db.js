@@ -1,39 +1,54 @@
 const mongoose = require('mongoose');
-const { getMemoryStore } = require('./memoryStore');
 
 let dbState = {
   isMemory: false,
   isConnected: false,
 };
 
-const connectDB = async () => {
-  const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hospital_management';
+let cachedPromise = null;
 
-  if (process.env.USE_MEMORY === 'true') {
-    console.log('Using in-memory database store (USE_MEMORY=true)...');
+const connectDB = async () => {
+  if (dbState.isConnected) {
+    return;
+  }
+
+  if (cachedPromise) {
+    return cachedPromise;
+  }
+
+  const mongoUri = process.env.MONGO_URI;
+
+  if (process.env.USE_MEMORY === 'true' || (!mongoUri && process.env.STRICT_DB !== 'true')) {
+    console.log(process.env.USE_MEMORY === 'true' 
+      ? 'Using in-memory database store (USE_MEMORY=true)...'
+      : 'No MONGO_URI provided, initializing zero-config In-Memory store...');
     dbState.isMemory = true;
     dbState.isConnected = true;
     return;
   }
 
-  try {
-    console.log(`Connecting to MongoDB at ${mongoUri}...`);
-    const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
-    });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-    dbState.isConnected = true;
-    dbState.isMemory = false;
-  } catch (err) {
-    if (process.env.NODE_ENV === 'production' || process.env.STRICT_DB === 'true') {
-      console.error(`Fatal: MongoDB Atlas connection failed in production mode: ${err.message}`);
-      throw err;
+  cachedPromise = (async () => {
+    try {
+      console.log(`Connecting to MongoDB...`);
+      const conn = await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        bufferCommands: false,
+      });
+      console.log(`MongoDB Connected: ${conn.connection.host}`);
+      dbState.isConnected = true;
+      dbState.isMemory = false;
+    } catch (err) {
+      if (process.env.STRICT_DB === 'true') {
+        console.error(`Fatal: MongoDB Atlas connection failed in strict mode: ${err.message}`);
+        throw err;
+      }
+      console.warn(`MongoDB connection failed (${err.message}). Falling back to In-Memory store...`);
+      dbState.isMemory = true;
+      dbState.isConnected = true;
     }
-    console.warn(`Local MongoDB connection failed (${err.message}).`);
-    console.log('Switching to local In-Memory Database store for development testing...');
-    dbState.isMemory = true;
-    dbState.isConnected = true;
-  }
+  })();
+
+  return cachedPromise;
 };
 
 const getDBState = () => dbState;

@@ -5,10 +5,14 @@ const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
 const seedData = require('./seedData');
 
+let isSeeded = false;
+
 const autoSeedIfEmpty = async () => {
+  if (isSeeded) return;
   try {
     const userCount = await User.countDocuments();
     if (userCount > 0) {
+      isSeeded = true;
       console.log(`Database already populated (${userCount} users found). Skipping auto-seed.`);
       return;
     }
